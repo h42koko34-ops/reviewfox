@@ -77,6 +77,9 @@ export interface PreClaim {
   client_phone: string | null;
   qr_scanned_at: string | null;
   client_device_hash: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_zone?: string | null;
   status: ClaimStatus;
   created_at: string;
 }

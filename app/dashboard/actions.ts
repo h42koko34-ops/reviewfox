@@ -163,14 +163,47 @@ export async function updateClaimStatus(
   newStatus: Extract<ClaimStatus, 'matched' | 'rejected'>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { supabase } = await requireCompanyAdmin();
-    const { error } = await supabase.from('pre_claims').update({ status: newStatus }).eq('id', claimId);
+    const { profile } = await requireCompanyAdmin();
+    const companyId = profile.company_id as string;
+
+    // استخدام adminClient لضمان قدرة صاحب الشركة على القبول اليدوي المباشر دون قيود RLS
+    const adminClient = createAdminClient();
+
+    const { data: existingClaim, error: fetchError } = await adminClient
+      .from('pre_claims')
+      .select('id, company_id, employee_id, status')
+      .eq('id', claimId)
+      .eq('company_id', companyId)
+      .single();
+
+    if (fetchError || !existingClaim) {
+      return { success: false, error: 'Claim not found.' };
+    }
+
+    const { error } = await adminClient
+      .from('pre_claims')
+      .update({ status: newStatus })
+      .eq('id', claimId)
+      .eq('company_id', companyId);
 
     if (error) {
-      if (error.message.includes('Forbidden')) {
-        return { success: false, error: 'LOCKED_APPROVAL' };
-      }
       return { success: false, error: error.message };
+    }
+
+    // إذا تم القبول اليدوي وكانت الحالة السابقة ليست matched، نزيد نقاط الموظف بمقدار نقطة واحدة
+    if (newStatus === 'matched' && existingClaim.status !== 'matched') {
+      const { data: empProfile } = await adminClient
+        .from('profiles')
+        .select('points')
+        .eq('id', existingClaim.employee_id)
+        .single();
+
+      if (empProfile) {
+        await adminClient
+          .from('profiles')
+          .update({ points: (empProfile.points ?? 0) + 1 })
+          .eq('id', existingClaim.employee_id);
+      }
     }
 
     revalidatePath('/dashboard');
@@ -285,4 +318,4 @@ export async function generatePayrollReport(): Promise<{
   } catch (err) {
     return { success: false, error: errorMessage(err, 'Failed to export payroll.') };
   }
-} 
+}

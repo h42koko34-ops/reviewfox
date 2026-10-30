@@ -69,13 +69,19 @@ function buildPrompt(input: MatchReviewInput): string {
     client_phone: c.client_phone,
     qr_scanned_at: c.qr_scanned_at,
     created_at: c.created_at,
-    // بيانات الفني المرتبط بالمطالبة (الاسم، الكود، الهاتف، رقم المكتب) ليتعرف عليها الذكاء الاصطناعي
-    employee_info: c.employee ? {
-      name: c.employee.full_name,
-      promo_code: c.employee.employee_promo_code,
-      phone: c.employee.phone,
-      desk: c.employee.desk_number,
-    } : null,
+    employee_gps_location: {
+      zone_name: c.location_zone ?? null,
+      latitude: c.latitude ?? null,
+      longitude: c.longitude ?? null,
+    },
+    employee_info: c.employee
+      ? {
+          name: c.employee.full_name,
+          promo_code: c.employee.employee_promo_code,
+          phone: c.employee.phone,
+          desk: c.employee.desk_number,
+        }
+      : null,
   }));
 
   const recentReviewsForPrompt = recentReviews.map((r) => ({
@@ -104,13 +110,14 @@ ${JSON.stringify(recentReviewsForPrompt, null, 2)}
 ### MATCHING RULES
 1. Compare reviewer_name against each claim's expected_client_name and ocr_captured_name (allow minor spelling/transliteration variance between Arabic and English).
 2. Check if the review_text mentions the employee's name (employee_info.name), employee promo code (employee_info.promo_code), or desk number — if a review explicitly praises a specific technician or mentions their code/name, give it an extremely strong positive matching signal.
-3. Favor claims created shortly before the review over ones created days earlier (timing proximity signal).
-4. If quick_tags sentiment conflicts strongly with the review's rating/text (e.g. tag says "negative" but review is a glowing 5-star), lower confidence and consider flagging suspicious.
-5. If voice_transcript or service_notes thematically matches the review_text's content, increase confidence.
-6. If a verification_code or distinctive claim detail appears literally inside review_text, treat it as a STRONG positive signal.
-7. Select at most ONE best-matching claim (highest overall evidence), or null if none reasonably match.
-8. Mark is_suspicious = true if: review text is near-identical/templated to one of the last 20 reviews, the reviewer name looks generic/fake, the sentiment contradicts the matched claim's signals, or a reward-farming pattern is evident (multiple similarly-worded reviews in a short span).
-9. Fraud detection happens AFTER matching — if is_suspicious is true, still return the matched_claim_id if one exists.
+3. GPS & Zone Matching: Compare the claim's \`employee_gps_location.zone_name\` with any location, neighborhood, branch, or city mentioned in \`review_text\`, \`service_notes\`, or \`voice_transcript\`. If the review mentions the same zone/area where the employee was physically located via GPS, increase match confidence significantly.
+4. Favor claims created shortly before the review over ones created days earlier (timing proximity signal).
+5. If quick_tags sentiment conflicts strongly with the review's rating/text (e.g. tag says "negative" but review is a glowing 5-star), lower confidence and consider flagging suspicious.
+6. If voice_transcript or service_notes thematically matches the review_text's content, increase confidence.
+7. If a verification_code or distinctive claim detail appears literally inside review_text, treat it as a STRONG positive signal.
+8. Select at most ONE best-matching claim (highest overall evidence), or null if none reasonably match.
+9. Mark is_suspicious = true if: review text is near-identical/templated to one of the last 20 reviews, the reviewer name looks generic/fake, the sentiment contradicts the matched claim's signals, the employee GPS zone strongly contradicts the branch/location mentioned in the review, or a reward-farming pattern is evident.
+10. Fraud detection happens AFTER matching — if is_suspicious is true, still return the matched_claim_id if one exists.
 
 ### OUTPUT
 Return ONLY the structured JSON matching the schema. ai_reasoning_ar must be fully in Arabic and ai_reasoning_en fully in English — both explaining the SAME conclusion in 1-3 concise sentences a non-technical business owner can understand.

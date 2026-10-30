@@ -1,10 +1,10 @@
 // File: components/employee/new-claim-form.tsx
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Loader2, QrCode, Send } from 'lucide-react';
+import { Loader2, MapPin, QrCode, RefreshCw, Send } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,71 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
   const { t } = useLanguage();
   const [form, setForm] = useState(initialForm);
   const [isPending, startTransition] = useTransition();
+
+  // حالة الـ GPS لتحديد المنطقة (Zone) التي يعمل بها الموظف
+  const [gps, setGps] = useState<{
+    lat: number | null;
+    lng: number | null;
+    zone: string | null;
+    status: 'loading' | 'success' | 'error';
+  }>({ lat: null, lng: null, zone: null, status: 'loading' });
+
+  const detectLocation = useCallback(() => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      setGps((prev) => ({ ...prev, status: 'error' }));
+      return;
+    }
+
+    setGps((prev) => ({ ...prev, status: 'loading' }));
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let zoneName = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ar`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data?.address;
+            if (addr) {
+              const area =
+                addr.suburb ||
+                addr.neighbourhood ||
+                addr.city_district ||
+                addr.quarter ||
+                addr.town ||
+                addr.village ||
+                '';
+              const city = addr.city || addr.state || '';
+              const combined = [area, city].filter(Boolean).join(' - ');
+              if (combined) zoneName = combined;
+            }
+          }
+        } catch (err) {
+          console.error('[ReviewFox] Reverse geocoding error:', err);
+        }
+
+        setGps({
+          lat: latitude,
+          lng: longitude,
+          zone: zoneName,
+          status: 'success',
+        });
+      },
+      (err) => {
+        console.warn('[ReviewFox] Geolocation error:', err);
+        setGps((prev) => ({ ...prev, status: 'error' }));
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, []);
+
+  useEffect(() => {
+    detectLocation();
+  }, [detectLocation]);
 
   const hasAnyFeature =
     enabledFeatures.quick_tags ||
@@ -73,6 +138,9 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
         ocrCapturedName: enabledFeatures.ocr_scanner && form.ocrCapturedName ? form.ocrCapturedName : null,
         qrScannedAt: enabledFeatures.qr_gateway ? form.qrScannedAt : null,
         clientPhone: enabledFeatures.whatsapp_link && form.clientPhone ? form.clientPhone : null,
+        latitude: gps.lat,
+        longitude: gps.lng,
+        locationZone: gps.zone,
       });
 
       if (result.success && result.claim) {
@@ -109,6 +177,37 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
       <div>
         <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white">{t.employee.newClaimForm.title}</h2>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{t.employee.newClaimForm.subtitle}</p>
+      </div>
+
+      {/* شريط تحديد المنطقة الجغرافية (GPS Zone) للموظف */}
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-zinc-200/80 bg-zinc-50/90 px-3.5 py-2.5 text-xs dark:border-zinc-800 dark:bg-zinc-800/50">
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 shrink-0 text-orange-500" />
+          {gps.status === 'loading' && (
+            <span className="font-medium text-amber-600 dark:text-amber-400">
+              جاري تحديد موقعك الجغرافي (GPS)...
+            </span>
+          )}
+          {gps.status === 'success' && (
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+              المنطقة الحالية (Zone): {gps.zone}
+            </span>
+          )}
+          {gps.status === 'error' && (
+            <span className="font-medium text-rose-500">
+              تعذر تحديد الموقع — يرجى السماح بصلاحية الـ GPS للمتصفح
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={detectLocation}
+          title="تحديث الموقع الجغرافي"
+          className="inline-flex items-center gap-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+        >
+          <RefreshCw className={`h-3 w-3 ${gps.status === 'loading' ? 'animate-spin' : ''}`} />
+          <span>تحديث</span>
+        </button>
       </div>
 
       <div className="space-y-2">

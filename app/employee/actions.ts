@@ -61,19 +61,20 @@ export async function getEmployeeBundle(): Promise<{
     }
 
     const defaultEnabledFeatures = {
-  quick_tags: true,
-  voice_notes: true,
-  promo_codes: true,
-  ocr_scanner: true,
-  qr_gateway: true,
-  whatsapp_link: true,
-} as EnabledFeatures;
+      quick_tags: true,
+      voice_notes: true,
+      promo_codes: true,
+      ocr_scanner: true,
+      qr_gateway: true,
+      whatsapp_link: true,
+      keyword_hooks: true,
+    } as EnabledFeatures;
 
-const enabledFeatures = company.enabled_features
-  ? (company.enabled_features as EnabledFeatures)
-  : defaultEnabledFeatures;
+    const enabledFeatures = company.enabled_features
+      ? (company.enabled_features as EnabledFeatures)
+      : defaultEnabledFeatures;
 
-return {
+    return {
       success: true,
       profile,
       enabledFeatures,
@@ -95,6 +96,9 @@ export async function submitPreClaim(input: {
   ocrCapturedName: string | null;
   qrScannedAt: string | null;
   clientPhone: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationZone?: string | null;
 }): Promise<{ success: boolean; claim?: PreClaim; error?: string }> {
   try {
     const { supabase, profile } = await requireEmployee();
@@ -113,6 +117,9 @@ export async function submitPreClaim(input: {
         ocr_captured_name: input.ocrCapturedName,
         qr_scanned_at: input.qrScannedAt,
         client_phone: input.clientPhone,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
+        location_zone: input.locationZone ?? null,
         status: 'pending',
       })
       .select('*')

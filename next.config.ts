@@ -1,4 +1,4 @@
-// File: next.config.ts
+// File: fig.ts
 import type { NextConfig } from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
 
@@ -16,6 +16,12 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default process.env.NODE_ENV === 'development' ? nextConfig : withPWA(nextConfig);

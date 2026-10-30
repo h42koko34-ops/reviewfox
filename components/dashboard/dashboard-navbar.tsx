@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Globe, LogOut, Moon, Store, Sun } from 'lucide-react';
@@ -25,9 +26,15 @@ export function DashboardNavbar({ companyName }: { companyName: string }) {
     <header className="sticky top-0 z-50 border-b border-white/20 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-sm font-extrabold text-white shadow-lg shadow-orange-500/30">
-            RF
-          </span>
+          <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-sm">
+            <Image
+              src="/logo.png"
+              alt="ReviewFox Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
           <span className="text-lg font-extrabold tracking-tight text-zinc-900 dark:text-white">
             Review<span className="text-orange-500">Fox</span>
           </span>

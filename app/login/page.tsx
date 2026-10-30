@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { motion } from 'framer-motion';
 import { Mail, Lock, Loader2, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
@@ -55,15 +56,25 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-zinc-950 text-white p-4 overflow-hidden">
-      {/* إضاءة خلفية خفيفة */}
-      <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 left-1/2 -translate-x-1/2 h-72 w-72 rounded-full bg-orange-600/10 blur-3xl" />
+    <div className="relative min-h-screen flex items-center justify-center reviewfox-bg text-white p-4 overflow-hidden">
+      {/* دوائر إضاءة خلفية متحركة وناعمة */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-80 w-80 rounded-full bg-orange-500/20 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-40 left-1/2 -translate-x-1/2 h-80 w-80 rounded-full bg-amber-600/10 blur-[100px]" />
 
-      <div className="relative z-10 w-full max-w-md bg-zinc-900/90 backdrop-blur-xl border border-zinc-800/80 rounded-3xl p-7 sm:p-9 shadow-2xl">
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-md glass-card rounded-[32px] p-8 sm:p-10"
+      >
         {/* اللوجو والعنوان */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="relative w-20 h-20 rounded-2xl bg-zinc-950 border border-orange-500/30 p-2 shadow-lg shadow-orange-500/10 mb-4 flex items-center justify-center overflow-hidden">
+          <motion.div
+            initial={{ scale: 0, rotate: -15 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.1 }}
+            className="relative w-20 h-20 rounded-2xl bg-zinc-900/90 border border-orange-500/40 p-2 shadow-xl shadow-orange-500/15 mb-4 flex items-center justify-center overflow-hidden"
+          >
             <Image
               src="/logo.png"
               alt="ReviewFox Logo"
@@ -72,7 +83,7 @@ export default function LoginPage() {
               className="object-contain p-1.5"
               priority
             />
-          </div>
+          </motion.div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Review<span className="text-orange-500">Fox</span>
@@ -85,12 +96,16 @@ export default function LoginPage() {
 
         {/* رسالة الخطأ */}
         {error && (
-          <div className="mb-5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:text-sm text-center font-medium">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs sm:text-sm text-center font-medium backdrop-blur-md"
+          >
             {error}
-          </div>
+          </motion.div>
         )}
 
-        {/* نموذج الدخول */}
+        {/* نموذج تسجيل الدخول فقط */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-2 text-right">
@@ -105,7 +120,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full bg-zinc-950/90 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition"
+                className="w-full bg-zinc-950/70 border border-zinc-800/80 rounded-2xl pl-10 pr-4 py-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition backdrop-blur-sm"
               />
             </div>
           </div>
@@ -123,7 +138,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-zinc-950/90 border border-zinc-800 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition"
+                className="w-full bg-zinc-950/70 border border-zinc-800/80 rounded-2xl pl-10 pr-10 py-3.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition backdrop-blur-sm"
               />
               <button
                 type="button"
@@ -139,7 +154,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 active:scale-[0.99] disabled:opacity-50 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-orange-500/20 transition flex items-center justify-center gap-2 mt-4 text-sm"
+            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 active:scale-[0.98] disabled:opacity-50 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/25 transition flex items-center justify-center gap-2 mt-6 text-sm cursor-pointer"
           >
             {loading ? (
               <>
@@ -151,7 +166,7 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

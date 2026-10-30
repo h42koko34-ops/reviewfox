@@ -6,37 +6,6 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --primary: 24.6 95% 53.1%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 24.6 95% 53.1%;
-    --radius: 0.5rem;
-
-    /* ألوان علامة ReviewFox التجارية */
-    --fox-50: #FFF7ED;
-    --fox-100: #FFEDD5;
-    --fox-200: #FED7AA;
-    --fox-300: #FDBA74;
-    --fox-400: #FB923C;
-    --fox-500: #F97316;
-    --fox-600: #EA580C;
-    --fox-700: #C2410C;
-    --fox-800: #9A3412;
-    --fox-900: #7C2D12;
-  }
-
-  .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --primary: 24.6 95% 53.1%;
@@ -52,13 +21,22 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 24.6 95% 53.1%;
+    --radius: 1rem;
+
+    --fox-50: #FFF7ED;
+    --fox-100: #FFEDD5;
+    --fox-200: #FED7AA;
+    --fox-300: #FDBA74;
+    --fox-400: #FB923C;
+    --fox-500: #F97316;
+    --fox-600: #EA580C;
+    --fox-700: #C2410C;
+    --fox-800: #9A3412;
+    --fox-900: #7C2D12;
   }
 }
 
-/* Tailwind CSS v4 directive; allow this custom at-rule in Stylelint. */
-/* stylelint-disable at-rule-no-unknown */
 @theme inline {
-  /* 🔧 تم إصلاح المشكلة: لف كل متغير بـ hsl() عشان يتحول لقيمة CSS صالحة فعليًا */
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-primary: hsl(var(--primary));
@@ -76,7 +54,6 @@
   --color-ring: hsl(var(--ring));
   --radius: var(--radius);
 
-  /* ألوان ماركة الثعلب (fox) - دي سليمة من الأساس لأنها hex مش hsl */
   --color-fox: var(--fox-500);
   --color-fox-50: var(--fox-50);
   --color-fox-100: var(--fox-100);
@@ -89,12 +66,10 @@
   --color-fox-800: var(--fox-800);
   --color-fox-900: var(--fox-900);
 
-  /* الخطوط تُحقَّن عبر next/font/google على عنصري <html> */
   --font-sans: var(--font-inter);
   --font-cairo: var(--font-cairo);
   --font-inter: var(--font-inter);
 }
-/* stylelint-enable at-rule-no-unknown */
 
 @layer base {
   html {
@@ -102,9 +77,27 @@
   }
 
   body {
-    /* 🔧 تم إصلاح نفس المشكلة هنا بالظبط */
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--font-cairo);
+    overflow-x: hidden;
   }
+}
+
+/* تصميم الزجاج المصنفر وخلفية ReviewFox الاحترافية */
+.glass-card {
+  background: rgba(24, 24, 27, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.reviewfox-bg {
+  background-color: #09090b;
+  background-image: 
+    radial-gradient(at 10% 20%, rgba(249, 115, 22, 0.18) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(234, 88, 12, 0.12) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(20, 20, 25, 1) 0px, transparent 100%);
+  background-attachment: fixed;
 }

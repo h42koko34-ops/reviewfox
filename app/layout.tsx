@@ -1,3 +1,4 @@
+// File: app/layout.tsx
 import type { Metadata, Viewport } from 'next';
 import { Cairo, Inter } from 'next/font/google';
 import { Providers } from './providers';
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${cairo.variable} ${inter.variable} font-cairo`}
       suppressHydrationWarning
     >
-      <body suppressHydrationWarning>
+      <body suppressHydrationWarning className="reviewfox-bg min-h-screen text-white antialiased selection:bg-orange-500 selection:text-white">
         <Providers>{children}</Providers>
       </body>
     </html>

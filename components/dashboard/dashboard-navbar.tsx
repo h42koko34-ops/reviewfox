@@ -1,0 +1,59 @@
+// File: components/dashboard/dashboard-navbar.tsx
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { Globe, LogOut, Moon, Store, Sun } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { createClient } from '@/lib/supabase/client';
+
+export function DashboardNavbar({ companyName }: { companyName: string }) {
+  const { theme, setTheme } = useTheme();
+  const { language, toggleLanguage, t } = useLanguage();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  }
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/20 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/70">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-sm font-extrabold text-white shadow-lg shadow-orange-500/30">
+            RF
+          </span>
+          <span className="text-lg font-extrabold tracking-tight text-zinc-900 dark:text-white">
+            Review<span className="text-orange-500">Fox</span>
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <span className="hidden items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-600 dark:text-orange-400 sm:flex">
+            <Store className="h-3.5 w-3.5" />
+            {companyName} · {t.nav.companyAdmin}
+          </span>
+
+          <Button variant="ghost" size="icon" onClick={toggleLanguage} aria-label="toggle language">
+            <Globe className="h-4 w-4" />
+            <span className="ms-1 text-xs font-bold">{language === 'ar' ? 'EN' : 'AR'}</span>
+          </Button>
+
+          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            <Sun className="h-4 w-4 dark:hidden" />
+            <Moon className="hidden h-4 w-4 dark:block" />
+          </Button>
+
+          <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="logout">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}

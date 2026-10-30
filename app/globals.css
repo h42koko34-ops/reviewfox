@@ -1,26 +1,110 @@
+/* File: app/globals.css */
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --primary: 24.6 95% 53.1%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 24.6 95% 53.1%;
+    --radius: 0.5rem;
+
+    /* ألوان علامة ReviewFox التجارية */
+    --fox-50: #FFF7ED;
+    --fox-100: #FFEDD5;
+    --fox-200: #FED7AA;
+    --fox-300: #FDBA74;
+    --fox-400: #FB923C;
+    --fox-500: #F97316;
+    --fox-600: #EA580C;
+    --fox-700: #C2410C;
+    --fox-800: #9A3412;
+    --fox-900: #7C2D12;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --primary: 24.6 95% 53.1%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 240 5.9% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 240 5.9% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 24.6 95% 53.1%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Tailwind CSS v4 directive; allow this custom at-rule in Stylelint. */
+/* stylelint-disable at-rule-no-unknown */
+@theme inline {
+  /* 🔧 تم إصلاح المشكلة: لف كل متغير بـ hsl() عشان يتحول لقيمة CSS صالحة فعليًا */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius: var(--radius);
+
+  /* ألوان ماركة الثعلب (fox) - دي سليمة من الأساس لأنها hex مش hsl */
+  --color-fox: var(--fox-500);
+  --color-fox-50: var(--fox-50);
+  --color-fox-100: var(--fox-100);
+  --color-fox-200: var(--fox-200);
+  --color-fox-300: var(--fox-300);
+  --color-fox-400: var(--fox-400);
+  --color-fox-500: var(--fox-500);
+  --color-fox-600: var(--fox-600);
+  --color-fox-700: var(--fox-700);
+  --color-fox-800: var(--fox-800);
+  --color-fox-900: var(--fox-900);
+
+  /* الخطوط تُحقَّن عبر next/font/google على عنصري <html> */
+  --font-sans: var(--font-inter);
+  --font-cairo: var(--font-cairo);
+  --font-inter: var(--font-inter);
+}
+/* stylelint-enable at-rule-no-unknown */
+
+@layer base {
+  html {
+    font-family: var(--font-cairo);
+  }
+
+  body {
+    /* 🔧 تم إصلاح نفس المشكلة هنا بالظبط */
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-cairo);
+  }
 }

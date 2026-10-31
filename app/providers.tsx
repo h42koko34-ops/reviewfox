@@ -7,10 +7,16 @@ import { LanguageProvider } from '@/lib/i18n/language-context';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      forcedTheme="dark"
+      enableSystem={false}
+      disableTransitionOnChange
+    >
       <LanguageProvider>
         {children}
-        <Toaster richColors position="top-center" />
+        <Toaster theme="dark" richColors position="top-center" />
       </LanguageProvider>
     </ThemeProvider>
   );

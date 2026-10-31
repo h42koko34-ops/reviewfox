@@ -24,9 +24,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+    <div className="min-h-screen bg-transparent text-white">
       <DashboardNavbar companyName={company?.name ?? ''} />
-      <main>{children}</main>
+      <main className="relative z-10">{children}</main>
     </div>
   );
 }

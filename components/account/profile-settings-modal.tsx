@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -31,6 +32,7 @@ export function ProfileSettingsModal({ profile: initialProfile }: Props) {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(initialProfile ?? null);
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -43,6 +45,10 @@ export function ProfileSettingsModal({ profile: initialProfile }: Props) {
   const [promoCode, setPromoCode] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (initialProfile) {
@@ -167,7 +173,7 @@ export function ProfileSettingsModal({ profile: initialProfile }: Props) {
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
-        className="gap-2 rounded-xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-bold shadow-sm hover:border-orange-500/50"
+        className="gap-2 rounded-xl border-white/15 bg-zinc-900/90 text-white font-bold shadow-sm hover:border-orange-500/50 hover:bg-zinc-800"
       >
         {avatarUrl ? (
           <img src={avatarUrl} alt={fullName} className="h-5 w-5 rounded-full object-cover" />
@@ -177,215 +183,222 @@ export function ProfileSettingsModal({ profile: initialProfile }: Props) {
         <span>إعدادات الحساب</span>
       </Button>
 
-      {open && (
-        <div
-          dir="rtl"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
-        >
-          <div className="relative w-full max-w-lg rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-2xl max-h-[92vh] overflow-y-auto text-right">
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-5">
-              <div>
-                <h2 className="text-lg font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-                  <UserCog className="h-5 w-5 text-orange-500" />
-                  <span>تعديل الحساب الشخصي</span>
-                </h2>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  تأكد من كتابة اسمك بوضوح ليتمكن الذكاء الاصطناعي من ربطه بالتقييمات
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="flex flex-col items-center mb-6">
-              <div className="relative h-24 w-24 rounded-full border-2 border-orange-500/40 bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-md">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-2xl font-bold text-orange-500">
-                    {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
-                  </span>
-                )}
-
-                <label className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition flex items-center justify-center cursor-pointer text-white">
-                  {uploadingAvatar ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <Camera className="h-6 w-6" />
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploadingAvatar}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              <span className="text-[11px] text-zinc-500 mt-2">
-                اضغط على الدائرة لتغيير صورتك الشخصية
-              </span>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-orange-500" />
-                  <span>الاسم الكامل / اسم الفني لدى العملاء (مهم للذكاء الاصطناعي)</span>
-                </Label>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="مثال: الفني أحمد محمد"
-                  className="bg-zinc-50 dark:bg-zinc-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-zinc-400" />
-                    <span>رقم الهاتف</span>
-                  </Label>
-                  <Input
-                    dir="ltr"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+2010..."
-                    className="bg-zinc-50 dark:bg-zinc-900"
-                  />
+      {mounted &&
+        open &&
+        createPortal(
+          <div
+            dir="rtl"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
+            onClick={() => setOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-lg rounded-3xl border border-white/15 bg-zinc-950/95 p-6 text-white shadow-2xl max-h-[90vh] overflow-y-auto text-right backdrop-blur-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
+                <div>
+                  <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                    <UserCog className="h-5 w-5 text-orange-500" />
+                    <span>تعديل الحساب الشخصي</span>
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    تأكد من كتابة اسمك بوضوح ليتمكن الذكاء الاصطناعي من ربطه بالتقييمات
+                  </p>
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-zinc-400" />
-                    <span>البريد الإلكتروني</span>
-                  </Label>
-                  <Input
-                    dir="ltr"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-zinc-50 dark:bg-zinc-900"
-                  />
-                </div>
-              </div>
-
-              {profile.role === 'employee' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold">رقم المكتب / القسم (اختياري)</Label>
-                    <Input
-                      value={deskNumber}
-                      onChange={(e) => setDeskNumber(e.target.value)}
-                      placeholder="مثال: فرع مدينة نصر / كاشير 2"
-                      className="bg-zinc-50 dark:bg-zinc-900"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold">كود الفني المميز (Promo Code)</Label>
-                    <Input
-                      dir="ltr"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                      placeholder="AHMED10"
-                      className="bg-zinc-50 dark:bg-zinc-900"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-zinc-400" />
-                  <span>تغيير كلمة المرور (اتركها فارغة إذا لا تريد تغييرها)</span>
-                </Label>
-                <Input
-                  dir="ltr"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="•••••••• (8 أحرف على الأقل)"
-                  className="bg-zinc-50 dark:bg-zinc-900"
-                />
-              </div>
-
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={isPending || uploadingAvatar}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl mt-2"
-              >
-                {isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                حفظ التعديلات
-              </Button>
-            </div>
-
-            <div className="mt-6 pt-5 border-t border-zinc-200 dark:border-zinc-800">
-              {!confirmDelete ? (
                 <button
                   type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  <span>حذف الحساب نهائياً (Delete Account)</span>
+                  <X className="h-5 w-5" />
                 </button>
-              ) : (
-                <div className="rounded-2xl border border-rose-500/50 bg-rose-50/80 dark:bg-rose-950/30 p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span>تحذير: سيتم مسح حسابك وجميع نقاطك وبياناتك نهائياً ولا يمكن التراجع!</span>
-                  </div>
-                  <p className="text-[11px] text-zinc-600 dark:text-zinc-300">
-                    لتأكيد الحذف، اكتب كلمة <strong className="text-rose-600">حذف</strong> أو{' '}
-                    <strong className="text-rose-600">DELETE</strong> بالأسفل:
-                  </p>
+              </div>
+
+              <div className="flex flex-col items-center mb-6">
+                <div className="relative h-24 w-24 rounded-full border-2 border-orange-500/50 bg-zinc-900 flex items-center justify-center overflow-hidden shadow-lg">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-bold text-orange-500">
+                      {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  )}
+
+                  <label className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition flex items-center justify-center cursor-pointer text-white">
+                    {uploadingAvatar ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : (
+                      <Camera className="h-6 w-6" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <span className="text-[11px] text-zinc-400 mt-2">
+                  اضغط على الدائرة لتغيير صورتك الشخصية
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-orange-500" />
+                    <span>الاسم الكامل / اسم الفني لدى العملاء (مهم للذكاء الاصطناعي)</span>
+                  </Label>
                   <Input
-                    value={deleteConfirmationText}
-                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
-                    placeholder="اكتب حذف أو DELETE"
-                    className="bg-white dark:bg-zinc-900 text-xs"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="مثال: الفني أحمد محمد"
+                    className="bg-zinc-900 border-white/15 text-white"
                   />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setConfirmDelete(false);
-                        setDeleteConfirmationText('');
-                      }}
-                      className="flex-1"
-                    >
-                      إلغاء
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={
-                        isPending ||
-                        (deleteConfirmationText.trim() !== 'حذف' &&
-                          deleteConfirmationText.trim().toUpperCase() !== 'DELETE')
-                      }
-                      onClick={handleDeleteAccount}
-                      className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold"
-                    >
-                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تأكيد الحذف النهائي'}
-                    </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5 text-zinc-400" />
+                      <span>رقم الهاتف</span>
+                    </Label>
+                    <Input
+                      dir="ltr"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+2010..."
+                      className="bg-zinc-900 border-white/15 text-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                      <span>البريد الإلكتروني</span>
+                    </Label>
+                    <Input
+                      dir="ltr"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="bg-zinc-900 border-white/15 text-white"
+                    />
                   </div>
                 </div>
-              )}
+
+                {profile.role === 'employee' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-zinc-200">رقم المكتب / القسم (اختياري)</Label>
+                      <Input
+                        value={deskNumber}
+                        onChange={(e) => setDeskNumber(e.target.value)}
+                        placeholder="مثال: فرع مدينة نصر / كاشير 2"
+                        className="bg-zinc-900 border-white/15 text-white"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-zinc-200">كود الفني المميز (Promo Code)</Label>
+                      <Input
+                        dir="ltr"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        placeholder="AHMED10"
+                        className="bg-zinc-900 border-white/15 text-white"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-zinc-400" />
+                    <span>تغيير كلمة المرور (اتركها فارغة إذا لا تريد تغييرها)</span>
+                  </Label>
+                  <Input
+                    dir="ltr"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="•••••••• (8 أحرف على الأقل)"
+                    className="bg-zinc-900 border-white/15 text-white"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isPending || uploadingAvatar}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl mt-2"
+                >
+                  {isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                  حفظ التعديلات
+                </Button>
+              </div>
+
+              <div className="mt-6 pt-5 border-t border-white/10">
+                {!confirmDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-400 hover:bg-rose-500 hover:text-white transition"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>حذف الحساب نهائياً (Delete Account)</span>
+                  </button>
+                ) : (
+                  <div className="rounded-2xl border border-rose-500/50 bg-rose-950/30 p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-rose-400 font-bold text-xs">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>تحذير: سيتم مسح حسابك وجميع نقاطك وبياناتك نهائياً ولا يمكن التراجع!</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300">
+                      لتأكيد الحذف، اكتب كلمة <strong className="text-rose-400">حذف</strong> أو{' '}
+                      <strong className="text-rose-400">DELETE</strong> بالأسفل:
+                    </p>
+                    <Input
+                      value={deleteConfirmationText}
+                      onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                      placeholder="اكتب حذف أو DELETE"
+                      className="bg-zinc-900 border-white/15 text-white text-xs"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setConfirmDelete(false);
+                          setDeleteConfirmationText('');
+                        }}
+                        className="flex-1 border-white/15 text-zinc-200 hover:bg-white/10"
+                      >
+                        إلغاء
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={
+                          isPending ||
+                          (deleteConfirmationText.trim() !== 'حذف' &&
+                            deleteConfirmationText.trim().toUpperCase() !== 'DELETE')
+                        }
+                        onClick={handleDeleteAccount}
+                        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                      >
+                        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تأكيد الحذف النهائي'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }

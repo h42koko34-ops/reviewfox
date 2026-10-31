@@ -27,9 +27,9 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 text-foreground dark:text-zinc-50 transition-colors pb-20">
+    <div className="min-h-screen bg-transparent text-white transition-colors pb-24">
       <EmployeeTopbar fullName={profile.full_name ?? ''} points={profile.points} />
-      <main className="mx-auto max-w-md px-4 py-6">{children}</main>
+      <main className="relative z-10 mx-auto max-w-md px-4 py-6">{children}</main>
       <EmployeeBottomNav />
     </div>
   );

@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#F97316',
+  themeColor: '#07090e',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -39,10 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="ar"
       dir="rtl"
-      className={`${cairo.variable} ${inter.variable} font-cairo`}
+      className={`${cairo.variable} ${inter.variable} font-cairo dark`}
       suppressHydrationWarning
     >
-      <body suppressHydrationWarning className="reviewfox-bg min-h-screen text-white antialiased selection:bg-orange-500 selection:text-white">
+      <body suppressHydrationWarning className="min-h-screen text-white antialiased selection:bg-orange-500 selection:text-white">
         <Providers>{children}</Providers>
       </body>
     </html>

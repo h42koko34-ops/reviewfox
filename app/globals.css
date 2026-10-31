@@ -5,21 +5,22 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
-  :root {
-    --background: 240 10% 3.9%;
+  :root,
+  .dark {
+    --background: 240 10% 4%;
     --foreground: 0 0% 98%;
     --primary: 24.6 95% 53.1%;
     --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 240 5.9% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 240 5.9% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --secondary: 240 4% 14%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 14%;
+    --muted-foreground: 240 5% 68%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 0 0% 100% / 0.12;
+    --input: 0 0% 100% / 0.14;
     --ring: 24.6 95% 53.1%;
     --radius: 1rem;
 
@@ -74,30 +75,91 @@
 @layer base {
   html {
     font-family: var(--font-cairo);
+    color-scheme: dark;
   }
 
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
     font-family: var(--font-cairo);
+    color: #f8fafc;
     overflow-x: hidden;
+    background-color: #07090e;
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(249, 115, 22, 0.28) 0%, transparent 45%),
+      radial-gradient(circle at 85% 25%, rgba(234, 88, 12, 0.22) 0%, transparent 45%),
+      radial-gradient(circle at 50% 85%, rgba(251, 146, 60, 0.18) 0%, transparent 50%),
+      linear-gradient(135deg, #07090e 0%, #11131c 50%, #090a0f 100%);
+    background-attachment: fixed;
   }
 }
 
-/* تصميم الزجاج المصنفر وخلفية ReviewFox الاحترافية */
-.glass-card {
-  background: rgba(24, 24, 27, 0.65);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+/* ==========================================================
+   تحويل تلقائي لجميع الكروت والخلفيات في التطبيق إلى زجاج فخم
+   ومنع أي خلفية بيضاء من إخفاء النصوص أو الأزرار
+   ========================================================== */
+
+/* إزالة أي خلفية رمادية أو بيضاء مصمتة من الـ Layouts الفرعية */
+div.bg-zinc-50,
+div.bg-slate-50,
+div.bg-gray-50,
+main.bg-zinc-50 {
+  background-color: transparent !important;
 }
 
-.reviewfox-bg {
-  background-color: #09090b;
-  background-image: 
-    radial-gradient(at 10% 20%, rgba(249, 115, 22, 0.18) 0px, transparent 50%),
-    radial-gradient(at 90% 80%, rgba(234, 88, 12, 0.12) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(20, 20, 25, 1) 0px, transparent 100%);
-  background-attachment: fixed;
+/* تحويل الكروت البيضاء والداكنة إلى زجاج مصنفر مثل الفيديو الثاني */
+.bg-white,
+.bg-white\/60,
+.bg-white\/70,
+.bg-white\/80,
+.dark\:bg-zinc-900,
+.dark\:bg-zinc-900\/60 {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  ) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 12px 36px -8px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18) !important;
+}
+
+/* ضبط النافبار العلوي ليكون زجاجياً وتظهر كل أزراره بوضوح */
+header {
+  background: rgba(12, 14, 22, 0.65) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ضمان وضوح كافة النصوص والأزرار التي اختفت في الوضع الفاتح */
+.text-zinc-900,
+.text-zinc-800,
+.text-slate-900 {
+  color: #ffffff !important;
+}
+
+.text-zinc-700,
+.text-zinc-600,
+.text-zinc-500 {
+  color: #cbd5e1 !important;
+}
+
+/* تحسين شكل حقول الإدخال والأزرار الزجاجية والجداول */
+input,
+textarea,
+select {
+  background-color: rgba(10, 12, 18, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+th {
+  color: #94a3b8 !important;
+  font-weight: 700 !important;
+}
+
+td {
+  color: #f1f5f9 !important;
 }

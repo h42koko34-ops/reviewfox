@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
+  CheckCircle2,
   Copy,
   Edit3,
   KeyRound,
@@ -15,6 +16,7 @@ import {
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Webhook,
   X,
@@ -48,7 +50,11 @@ import {
 import { CompanyEmployeesPanel } from './company-employees-panel';
 
 interface Props {
-  company: Company;
+  company: Company & {
+    google_connected_email?: string | null;
+    google_refresh_token?: string | null;
+    google_connected_at?: string | null;
+  };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdated: (company: Company) => void;
@@ -193,6 +199,9 @@ export function GodModeDrawer({
 
   if (!open || !mounted) return null;
 
+  const connectedEmail = company.google_connected_email;
+  const isGoogleConnected = Boolean(connectedEmail || company.google_refresh_token);
+
   function addBranch() {
     setBranches((prev) => [
       ...prev,
@@ -335,6 +344,55 @@ export function GodModeDrawer({
     { id: 'employees', label: t.godMode.tabEmployees },
     { id: 'danger', label: t.godMode.tabDanger },
   ];
+
+  // قسم الربط التلقائي عبر Google OAuth 2.0
+  const renderGoogleOAuthSection = () => (
+    <div className="rounded-2xl border border-orange-500/30 bg-gradient-to-br from-orange-500/10 via-zinc-900 to-zinc-950 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-orange-400 shrink-0" />
+          <span className="text-sm font-bold text-white">
+            {isAr
+              ? 'الربط التلقائي بالذكاء الاصطناعي (Google Business OAuth)'
+              : 'Google Business AI Auto-Connect (OAuth)'}
+          </span>
+        </div>
+
+        {isGoogleConnected ? (
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>{connectedEmail ? `${isAr ? 'متصل:' : 'Connected:'} ${connectedEmail}` : isAr ? 'متصل بنجاح' : 'Connected'}</span>
+          </span>
+        ) : (
+          <span className="text-xs font-semibold bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-lg">
+            {isAr ? 'غير متصل بعد' : 'Not connected'}
+          </span>
+        )}
+      </div>
+
+      <p className="text-xs text-zinc-400 leading-relaxed">
+        {isAr
+          ? 'اربط حساب Google Business الرسمي الخاص بالشركة بضغطة زر واحدة ليقوم النظام بسحب التقييمات الجديدة ومطابقتها بالذكاء الاصطناعي وإضافة المكافآت للموظفين تلقائياً بدون أي تدخل يدوي.'
+          : 'Connect the official Google Business Profile with one click to automatically fetch new reviews, match them with AI, and reward employees.'}
+      </p>
+
+      <a
+        href={`/api/google/connect?companyId=${company.id}`}
+        className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl transition w-full text-center text-xs sm:text-sm shadow-lg shadow-orange-500/20"
+      >
+        <Link2 className="h-4 w-4" />
+        <span>
+          {isGoogleConnected
+            ? isAr
+              ? 'تحديث أو تغيير حساب Google Business المربوط'
+              : 'Reconnect / Change Google Business Account'
+            : isAr
+            ? 'ربط حساب Google Business تلقائياً'
+            : 'Connect Google Business Automatically'}
+        </span>
+      </a>
+    </div>
+  );
 
   const renderBranchesManager = () => (
     <div className="space-y-3 pt-2">
@@ -528,6 +586,9 @@ export function GodModeDrawer({
                 </div>
               </div>
 
+              {/* قسم الربط التلقائي مع Google Business OAuth */}
+              {renderGoogleOAuthSection()}
+
               {/* قسم الفروع المتعددة */}
               {renderBranchesManager()}
 
@@ -574,6 +635,9 @@ export function GodModeDrawer({
           {/* 3. تبويب ربط فروع جوجل والـ Webhook */}
           {activeTab === 'integration' && (
             <div className="space-y-5 text-start w-full">
+              {/* قسم الربط التلقائي مع Google Business OAuth */}
+              {renderGoogleOAuthSection()}
+
               <div className="rounded-2xl border border-white/15 bg-zinc-900/70 p-4 space-y-4">
                 {renderBranchesManager()}
 

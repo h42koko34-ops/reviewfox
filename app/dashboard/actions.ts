@@ -9,17 +9,27 @@ import type { ClaimWithEmployee, PayrollRow } from '@/lib/types/dashboard';
 
 async function requireCompanyAdmin() {
   const supabase = await createClient();
+  // قراءة الجلسة محلياً أولاً لتسريع الاستجابة، واللجوء إلى getUser فقط عند الحاجة
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const user = session?.user ?? (await supabase.auth.getUser()).data.user;
   if (!user) throw new Error('UNAUTHENTICATED');
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  // استخدام adminClient لتجاوز بطء فحص RLS على كل صف بعد التحقق من المستخدم
+  const adminClient = createAdminClient();
+  const { data: profile } = await adminClient
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
   if (!profile || profile.role !== 'company_admin' || !profile.company_id) {
     throw new Error('FORBIDDEN');
   }
 
-  return { supabase, profile: profile as Profile };
+  return { supabase, adminClient, profile: profile as Profile };
 }
 
 function errorMessage(err: unknown, fallback: string) {
@@ -40,19 +50,25 @@ export async function getDashboardBundle(): Promise<{
   error?: string;
 }> {
   try {
-    const { supabase, profile } = await requireCompanyAdmin();
+    const { adminClient, profile } = await requireCompanyAdmin();
     const companyId = profile.company_id as string;
 
-    const [{ data: company, error: companyError }, { data: employees }, { data: claims }] = await Promise.all([
-      supabase.from('companies').select('*').eq('id', companyId).single(),
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('role', 'employee')
-        .order('created_at', { ascending: false }),
-      supabase.from('pre_claims').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
-    ]);
+    const [{ data: company, error: companyError }, { data: employees }, { data: claims }] =
+      await Promise.all([
+        adminClient.from('companies').select('*').eq('id', companyId).single(),
+        adminClient
+          .from('profiles')
+          .select('*')
+          .eq('company_id', companyId)
+          .eq('role', 'employee')
+          .order('created_at', { ascending: false }),
+        adminClient
+          .from('pre_claims')
+          .select('*')
+          .eq('company_id', companyId)
+          .order('created_at', { ascending: false })
+          .limit(300),
+      ]);
 
     if (companyError || !company) {
       return { success: false, error: companyError?.message ?? 'Company not found.' };
@@ -77,11 +93,13 @@ export async function getDashboardBundle(): Promise<{
 
 export async function getSuspiciousReviews(companyId: string) {
   try {
-    const { supabase } = await requireCompanyAdmin();
-    const { data, error } = await supabase
+    const { adminClient, profile } = await requireCompanyAdmin();
+    const targetCompanyId = profile.company_id as string;
+
+    const { data, error } = await adminClient
       .from('actual_reviews')
       .select('*')
-      .eq('company_id', companyId)
+      .eq('company_id', targetCompanyId)
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -98,10 +116,10 @@ export async function addEmployeeAsCompanyAdmin(input: {
   password: string;
 }): Promise<{ success: boolean; employee?: Profile; error?: string }> {
   try {
-    const { supabase, profile } = await requireCompanyAdmin();
+    const { adminClient, profile } = await requireCompanyAdmin();
     const companyId = profile.company_id as string;
 
-    const { data: company, error: companyError } = await supabase
+    const { data: company, error: companyError } = await adminClient
       .from('companies')
       .select('*')
       .eq('id', companyId)
@@ -121,7 +139,6 @@ export async function addEmployeeAsCompanyAdmin(input: {
       return { success: false, error: 'QUOTA_REACHED' };
     }
 
-    const adminClient = createAdminClient();
     const { data: createdUser, error: authError } = await adminClient.auth.admin.createUser({
       email: input.email,
       password: input.password,
@@ -133,7 +150,7 @@ export async function addEmployeeAsCompanyAdmin(input: {
       return { success: false, error: authError?.message ?? 'Failed to create employee account.' };
     }
 
-    const { data: newProfile, error: profileError } = await supabase
+    const { data: newProfile, error: profileError } = await adminClient
       .from('profiles')
       .insert({
         id: createdUser.user.id,
@@ -163,11 +180,8 @@ export async function updateClaimStatus(
   newStatus: Extract<ClaimStatus, 'matched' | 'rejected'>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { profile } = await requireCompanyAdmin();
+    const { adminClient, profile } = await requireCompanyAdmin();
     const companyId = profile.company_id as string;
-
-    // استخدام adminClient لضمان قدرة صاحب الشركة على القبول اليدوي المباشر دون قيود RLS
-    const adminClient = createAdminClient();
 
     const { data: existingClaim, error: fetchError } = await adminClient
       .from('pre_claims')
@@ -190,7 +204,6 @@ export async function updateClaimStatus(
       return { success: false, error: error.message };
     }
 
-    // إذا تم القبول اليدوي وكانت الحالة السابقة ليست matched، نزيد نقاط الموظف بمقدار نقطة واحدة
     if (newStatus === 'matched' && existingClaim.status !== 'matched') {
       const { data: empProfile } = await adminClient
         .from('profiles')
@@ -244,10 +257,14 @@ export async function generatePayrollReport(): Promise<{
   error?: string;
 }> {
   try {
-    const { supabase, profile } = await requireCompanyAdmin();
+    const { adminClient, profile } = await requireCompanyAdmin();
     const companyId = profile.company_id as string;
 
-    const { data: company } = await supabase.from('companies').select('*').eq('id', companyId).single();
+    const { data: company } = await adminClient
+      .from('companies')
+      .select('*')
+      .eq('id', companyId)
+      .single();
     if (!company) return { success: false, error: 'Company not found.' };
 
     const permissions = company.admin_permissions as AdminPermissions;
@@ -260,8 +277,8 @@ export async function generatePayrollReport(): Promise<{
     startOfMonth.setHours(0, 0, 0, 0);
 
     const [{ data: employees }, { data: claims }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('company_id', companyId).eq('role', 'employee'),
-      supabase
+      adminClient.from('profiles').select('*').eq('company_id', companyId).eq('role', 'employee'),
+      adminClient
         .from('pre_claims')
         .select('*')
         .eq('company_id', companyId)

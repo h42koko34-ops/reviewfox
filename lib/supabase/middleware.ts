@@ -3,6 +3,25 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // 1. تحويل الرابط القديم فوراً بدون أي اتصال بقاعدة البيانات
+  if (pathname.startsWith('/dashboard/employee')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/employee';
+    return NextResponse.redirect(url);
+  }
+
+  // تجاهل مسارات الـ API والصفحات العامة تماماً لعدم إبطاء الموقع
+  const isSuperAdminRoute = pathname.startsWith('/super-admin');
+  const isCompanyRoute = pathname.startsWith('/dashboard');
+  const isEmployeeRoute = pathname.startsWith('/employee');
+  const isAuthRoute = pathname.startsWith('/login');
+
+  if (!isSuperAdminRoute && !isCompanyRoute && !isEmployeeRoute && !isAuthRoute) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -22,32 +41,23 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // 2. قراءة الجلسة من الكوكيز محلياً في أجزاء من المللي ثانية بدلاً من getUser البطيئة
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  const { pathname } = request.nextUrl;
-  const isSuperAdminRoute = pathname.startsWith('/super-admin');
-  const isCompanyRoute = pathname.startsWith('/dashboard');
-  const isEmployeeRoute = pathname.startsWith('/employee');
-  const isAuthRoute = pathname.startsWith('/login');
+  const user = session?.user;
 
-  // 1. إذا دخل على الرابط القديم /dashboard/employee يحوله فوراً إلى /employee
-  if (pathname.startsWith('/dashboard/employee')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/employee';
-    return NextResponse.redirect(url);
-  }
-
-  // 2. إذا لم يكن مسجلاً للدخول وحاول فتح أي لوحة محمية يحوله إلى /login
+  // 3. إذا لم يكن مسجلاً للدخول وحاول فتح لوحة محمية يحوله فوراً إلى /login
   if (!user && (isSuperAdminRoute || isCompanyRoute || isEmployeeRoute)) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // 3. إذا كان مسجلاً للدخول، نتأكد من توجيهه للمسار المناسب لصلاحيته
-  if (user && (isSuperAdminRoute || isCompanyRoute || isEmployeeRoute || isAuthRoute)) {
+  // 4. نستعلم عن الـ role فقط إذا كان المستخدم المسجل يقف على صفحة /login لتوجيهه
+  // أما باقي الصفحات (/dashboard, /super-admin, /employee) فالـ layout الخاص بها يفحص الـ role بالفعل!
+  if (user && isAuthRoute) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -55,31 +65,14 @@ export async function updateSession(request: NextRequest) {
       .single();
 
     const role = profile?.role;
-
-    const homeByRole =
+    const url = request.nextUrl.clone();
+    url.pathname =
       role === 'super_admin'
         ? '/super-admin'
         : role === 'company_admin'
         ? '/dashboard'
         : '/employee';
-
-    if (isAuthRoute) {
-      const url = request.nextUrl.clone();
-      url.pathname = homeByRole;
-      return NextResponse.redirect(url);
-    }
-
-    if (isSuperAdminRoute && role !== 'super_admin') {
-      const url = request.nextUrl.clone();
-      url.pathname = homeByRole;
-      return NextResponse.redirect(url);
-    }
-
-    if (isCompanyRoute && role === 'employee') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/employee';
-      return NextResponse.redirect(url);
-    }
+    return NextResponse.redirect(url);
   }
 
   return response;

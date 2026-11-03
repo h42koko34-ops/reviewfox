@@ -17,13 +17,44 @@ interface Props {
   onExtracted: (result: ExtractedData) => void;
 }
 
-function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+/**
+ * ضغط وتصغير صورة الفاتورة الملتقطة بكاميرا الموبايل لتسريع الرفع ومنع خطأ الحجم الكبير
+ */
+function compressImageToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1] ?? '';
-      resolve({ base64, mimeType: file.type });
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const raw = (e.target?.result as string).split(',')[1] ?? '';
+          resolve({ base64: raw, mimeType: file.type || 'image/jpeg' });
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const base64 = dataUrl.split(',')[1] ?? '';
+        resolve({ base64, mimeType: 'image/jpeg' });
+      };
+      img.onerror = () => reject(new Error('Failed to load image.'));
+      img.src = e.target?.result as string;
     };
     reader.onerror = () => reject(new Error('Failed to read image file.'));
     reader.readAsDataURL(file);
@@ -31,7 +62,8 @@ function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }>
 }
 
 export function OcrCaptureButton({ onExtracted }: Props) {
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
+  const isAr = dir === 'rtl';
   const inputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -41,7 +73,7 @@ export function OcrCaptureButton({ onExtracted }: Props) {
 
     setIsProcessing(true);
     try {
-      const { base64, mimeType } = await fileToBase64(file);
+      const { base64, mimeType } = await compressImageToBase64(file);
       const response = await fetch('/api/ocr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,7 +82,10 @@ export function OcrCaptureButton({ onExtracted }: Props) {
       const result = await response.json();
 
       if (!response.ok) {
-        toast.error(result.error ?? 'OCR extraction failed.');
+        toast.error(
+          result.error ??
+            (isAr ? 'تعذر قراءة الفاتورة، حاول تصويرها بوضوح.' : 'OCR extraction failed.')
+        );
         return;
       }
 
@@ -58,10 +93,16 @@ export function OcrCaptureButton({ onExtracted }: Props) {
       toast.success(
         result.data.ocr_captured_name
           ? `${t.employee.newClaimForm.ocrLabel}: ${result.data.ocr_captured_name}`
+          : isAr
+          ? 'تم استخراج بيانات الفاتورة بنجاح!'
           : t.employee.newClaimForm.ocrLabel
       );
     } catch {
-      toast.error('OCR extraction failed. Please try again.');
+      toast.error(
+        isAr
+          ? 'حدث خطأ أثناء فحص الفاتورة، يرجى المحاولة مرة أخرى.'
+          : 'OCR extraction failed. Please try again.'
+      );
     } finally {
       setIsProcessing(false);
       if (inputRef.current) inputRef.current.value = '';

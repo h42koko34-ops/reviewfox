@@ -3,6 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { EnabledFeatures, PreClaim, Profile } from '@/lib/types/database';
 
 interface LeaderboardEntry {
@@ -15,14 +16,24 @@ interface LeaderboardEntry {
 async function requireEmployee() {
   const supabase = await createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const user = session?.user ?? (await supabase.auth.getUser()).data.user;
   if (!user) throw new Error('UNAUTHENTICATED');
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-  if (!profile || profile.role !== 'employee' || !profile.company_id) throw new Error('FORBIDDEN');
+  const adminClient = createAdminClient();
+  const { data: profile } = await adminClient
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
 
-  return { supabase, profile: profile as Profile };
+  if (!profile || profile.role !== 'employee' || !profile.company_id) {
+    throw new Error('FORBIDDEN');
+  }
+
+  return { supabase, adminClient, profile: profile as Profile };
 }
 
 function errorMessage(err: unknown, fallback: string) {
@@ -42,15 +53,22 @@ export async function getEmployeeBundle(): Promise<{
   error?: string;
 }> {
   try {
-    const { supabase, profile } = await requireEmployee();
+    const { adminClient, profile } = await requireEmployee();
 
-    const [{ data: company, error: companyError }, { data: todayCount }] = await Promise.all([
-      supabase
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const [{ data: company, error: companyError }, { count: todayCount }] = await Promise.all([
+      adminClient
         .from('companies')
         .select('enabled_features, max_daily_claims_per_employee, status')
         .eq('id', profile.company_id as string)
         .single(),
-      supabase.rpc('get_my_today_claims_count'),
+      adminClient
+        .from('pre_claims')
+        .select('id', { count: 'exact', head: true })
+        .eq('employee_id', profile.id)
+        .gte('created_at', startOfToday.toISOString()),
     ]);
 
     if (companyError || !company) {
@@ -140,12 +158,13 @@ export async function submitPreClaim(input: {
 
 export async function getMyClaims(): Promise<{ success: boolean; claims?: PreClaim[]; error?: string }> {
   try {
-    const { supabase, profile } = await requireEmployee();
-    const { data, error } = await supabase
+    const { adminClient, profile } = await requireEmployee();
+    const { data, error } = await adminClient
       .from('pre_claims')
       .select('*')
       .eq('employee_id', profile.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) return { success: false, error: error.message };
     return { success: true, claims: data as PreClaim[] };

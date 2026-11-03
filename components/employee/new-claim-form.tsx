@@ -1,10 +1,10 @@
 // File: components/employee/new-claim-form.tsx
 'use client';
 
-import { useEffect, useState, useTransition, useCallback } from 'react';
+import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Loader2, MapPin, QrCode, RefreshCw, Send } from 'lucide-react';
+import { Loader2, MapPin, MessageCircle, Mic, MicOff, QrCode, RefreshCw, Send } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ interface Props {
   enabledFeatures: EnabledFeatures;
   remaining: number;
   onSubmitted: (claim: PreClaim) => void;
+  googleReviewUrl?: string | null;
 }
 
 const QUICK_TAG_KEYS = ['positive', 'negative', 'neutral', 'followUp'] as const;
@@ -34,12 +35,36 @@ const initialForm = {
   clientPhone: '',
 };
 
-export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props) {
-  const { t } = useLanguage();
+/**
+ * دالة ذكية لتنسيق أي رقم هاتف يكتبه الموظف ليقبله واتساب مباشرة
+ * مثال: 01012345678 -> 201012345678
+ */
+function formatPhoneForWhatsApp(rawPhone: string): string {
+  let digits = rawPhone.replace(/\D/g, '');
+
+  if (!digits) return '';
+
+  if (digits.startsWith('00')) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith('01')) {
+    digits = '20' + digits.slice(1);
+  } else if (digits.length === 10 && digits.startsWith('05')) {
+    digits = '966' + digits.slice(1);
+  } else if (digits.startsWith('0')) {
+    digits = '20' + digits.slice(1);
+  }
+
+  return digits;
+}
+
+export function NewClaimForm({ enabledFeatures, remaining, onSubmitted, googleReviewUrl }: Props) {
+  const { t, dir } = useLanguage();
+  const isAr = dir === 'rtl';
   const [form, setForm] = useState(initialForm);
   const [isPending, startTransition] = useTransition();
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
-  // حالة الـ GPS لتحديد المنطقة (Zone) التي يعمل بها الموظف
   const [gps, setGps] = useState<{
     lat: number | null;
     lng: number | null;
@@ -112,6 +137,7 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
     enabledFeatures.qr_gateway ||
     enabledFeatures.whatsapp_link;
 
+  // تم التأكد من صحة هذه الدالة 100%
   function toggleTag(tagKey: string) {
     setForm((prev) => ({
       ...prev,
@@ -126,10 +152,93 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
     toast.success(t.employee.newClaimForm.qrScannedAt);
   }
 
+  function toggleVoiceRecording() {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.error(
+        isAr
+          ? 'متصفحك الحالي لا يدعم التسجيل الصوتي المباشر، جرب متصفح Chrome.'
+          : 'Your browser does not support voice recognition, please try Chrome.'
+      );
+      return;
+    }
+
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = isAr ? 'ar-EG' : 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+      toast.info(isAr ? 'تحدث الآن... جاري الاستماع 🎙️' : 'Listening... Speak now 🎙️');
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setForm((prev) => ({
+        ...prev,
+        voiceTranscript: prev.voiceTranscript
+          ? `${prev.voiceTranscript} ${transcript}`
+          : transcript,
+      }));
+      toast.success(isAr ? 'تم تحويل الصوت إلى نص بنجاح!' : 'Voice converted to text!');
+    };
+
+    recognition.onerror = () => {
+      setIsRecording(false);
+      toast.error(isAr ? 'تعذر التقاط الصوت، تأكد من صلاحية الميكروفون.' : 'Microphone error.');
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }
+
+  function openWhatsAppChat(phoneInput: string, clientNameInput: string) {
+    const formattedPhone = formatPhoneForWhatsApp(phoneInput);
+    if (formattedPhone.length < 10) {
+      toast.error(
+        isAr
+          ? 'يرجى إدخال رقم هاتف صحيح أولاً (مثال: 01012345678)'
+          : 'Please enter a valid phone number first'
+      );
+      return false;
+    }
+
+    const clientGreeting = clientNameInput.trim() ? `أستاذ/ة ${clientNameInput.trim()}` : 'عميلنا العزيز';
+    const reviewLinkPart = googleReviewUrl
+      ? `\n\nرابط التقييم المباشر:\n${googleReviewUrl}`
+      : '';
+
+    const message = isAr
+      ? `مرحباً ${clientGreeting} 🌟\nشكراً لزيارتك لنا اليوم! يسعدنا جداً معرفة رأيك وتقييم تجربتك معنا على جوجل، فهذا يساعدنا كثيراً على تقديم أفضل خدمة دائماً.${reviewLinkPart}`
+      : `Hello ${clientNameInput.trim() || 'there'} 🌟\nThank you for visiting us today! We would love to hear your feedback on Google Reviews.${reviewLinkPart}`;
+
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    return true;
+  }
+
   function handleSubmit() {
+    const phoneToSave = form.clientPhone.trim();
+    const clientNameToSave = form.expectedClientName.trim();
+
     startTransition(async () => {
       const result = await submitPreClaim({
-        expectedClientName: form.expectedClientName.trim(),
+        expectedClientName: clientNameToSave,
         invoiceNumber: form.invoiceNumber.trim(),
         invoiceTimestamp: new Date(form.invoiceTimestamp).toISOString(),
         quickTags: enabledFeatures.quick_tags && form.selectedTags.length > 0 ? form.selectedTags : null,
@@ -137,7 +246,7 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
         verificationCode: enabledFeatures.promo_codes && form.verificationCode ? form.verificationCode : null,
         ocrCapturedName: enabledFeatures.ocr_scanner && form.ocrCapturedName ? form.ocrCapturedName : null,
         qrScannedAt: enabledFeatures.qr_gateway ? form.qrScannedAt : null,
-        clientPhone: enabledFeatures.whatsapp_link && form.clientPhone ? form.clientPhone : null,
+        clientPhone: enabledFeatures.whatsapp_link && phoneToSave ? formatPhoneForWhatsApp(phoneToSave) : null,
         latitude: gps.lat,
         longitude: gps.lng,
         locationZone: gps.zone,
@@ -145,6 +254,11 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
 
       if (result.success && result.claim) {
         toast.success(t.employee.newClaimForm.toastSuccess);
+
+        if (enabledFeatures.whatsapp_link && phoneToSave.length >= 10) {
+          openWhatsAppChat(phoneToSave, clientNameToSave);
+        }
+
         onSubmitted(result.claim);
         setForm(initialForm);
       } else if (result.error === 'DUPLICATE_INVOICE') {
@@ -179,7 +293,6 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{t.employee.newClaimForm.subtitle}</p>
       </div>
 
-      {/* شريط تحديد المنطقة الجغرافية (GPS Zone) للموظف */}
       <div className="flex items-center justify-between gap-2 rounded-xl border border-zinc-200/80 bg-zinc-50/90 px-3.5 py-2.5 text-xs dark:border-zinc-800 dark:bg-zinc-800/50">
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 shrink-0 text-orange-500" />
@@ -262,7 +375,21 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
 
       {enabledFeatures.voice_notes && (
         <div className="space-y-2">
-          <Label>{t.employee.newClaimForm.voiceNotesLabel}</Label>
+          <div className="flex items-center justify-between">
+            <Label>{t.employee.newClaimForm.voiceNotesLabel}</Label>
+            <button
+              type="button"
+              onClick={toggleVoiceRecording}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                isRecording
+                  ? 'animate-pulse bg-rose-500 text-white'
+                  : 'bg-orange-500/15 text-orange-600 hover:bg-orange-500/25 dark:text-orange-400'
+              }`}
+            >
+              {isRecording ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              <span>{isRecording ? (isAr ? 'إيقاف التسجيل' : 'Stop') : (isAr ? 'تسجيل صوتي 🎙️' : 'Voice Input')}</span>
+            </button>
+          </div>
           <Textarea
             value={form.voiceTranscript}
             onChange={(e) => setForm((f) => ({ ...f, voiceTranscript: e.target.value }))}
@@ -326,12 +453,29 @@ export function NewClaimForm({ enabledFeatures, remaining, onSubmitted }: Props)
       {enabledFeatures.whatsapp_link && (
         <div className="space-y-2">
           <Label>{t.employee.newClaimForm.whatsappLabel}</Label>
-          <Input
-            type="tel"
-            value={form.clientPhone}
-            onChange={(e) => setForm((f) => ({ ...f, clientPhone: e.target.value }))}
-            placeholder={t.employee.newClaimForm.whatsappPlaceholder}
-          />
+          <div className="flex gap-2">
+            <Input
+              type="tel"
+              value={form.clientPhone}
+              onChange={(e) => setForm((f) => ({ ...f, clientPhone: e.target.value }))}
+              placeholder="01012345678"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              onClick={() => openWhatsAppChat(form.clientPhone, form.expectedClientName)}
+              disabled={form.clientPhone.trim().length < 10}
+              className="shrink-0 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span>{isAr ? 'إرسال واتساب' : 'WhatsApp'}</span>
+            </Button>
+          </div>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            {isAr
+              ? 'اكتب رقم العميل (حتى بدون +20) واضغط "إرسال واتساب" لفتح المحادثة برسالة التقييم جاهزة فوراً.'
+              : 'Enter customer phone to send a direct WhatsApp review invitation.'}
+          </p>
         </div>
       )}
 

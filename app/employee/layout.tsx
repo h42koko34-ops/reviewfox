@@ -1,18 +1,22 @@
 // File: app/employee/layout.tsx
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { EmployeeTopbar } from '@/components/employee/employee-topbar';
 import { EmployeeBottomNav } from '@/components/employee/employee-bottom-nav';
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const user = session?.user ?? (await supabase.auth.getUser()).data.user;
 
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
+  const adminClient = createAdminClient();
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('role, company_id, full_name, points, is_active')
     .eq('id', user.id)
@@ -22,7 +26,7 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
     redirect(profile?.role === 'super_admin' ? '/super-admin' : '/dashboard');
   }
 
-  if (!profile.is_active) {
+  if (profile.is_active === false) {
     redirect('/suspended');
   }
 

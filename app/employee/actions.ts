@@ -4,6 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendAutomatedCompanyWhatsApp } from '@/lib/whatsapp/send-invite';
 import type { EnabledFeatures, PreClaim, Profile } from '@/lib/types/database';
 
 interface LeaderboardEntry {
@@ -117,9 +118,9 @@ export async function submitPreClaim(input: {
   latitude?: number | null;
   longitude?: number | null;
   locationZone?: string | null;
-}): Promise<{ success: boolean; claim?: PreClaim; error?: string }> {
+}): Promise<{ success: boolean; claim?: PreClaim; whatsappSent?: boolean; error?: string }> {
   try {
-    const { supabase, profile } = await requireEmployee();
+    const { supabase, adminClient, profile } = await requireEmployee();
 
     const { data: claim, error } = await supabase
       .from('pre_claims')
@@ -149,8 +150,40 @@ export async function submitPreClaim(input: {
       return { success: false, error: error.message };
     }
 
+    // إرسال واتساب تلقائي من السيرفر (من رقم الشركة المخصص أو الرقم الموحد للمنصة)
+    let whatsappSent = false;
+    if (input.clientPhone && input.clientPhone.trim().length >= 10) {
+      const { data: companyData } = await adminClient
+        .from('companies')
+        .select('name, google_place_id, google_review_url, whatsapp_phone_number_id, whatsapp_access_token')
+        .eq('id', profile.company_id as string)
+        .single();
+
+      const reviewLink =
+        (companyData as any)?.google_review_url ||
+        (companyData?.google_place_id
+          ? `https://search.google.com/local/writereview?placeid=${companyData.google_place_id}`
+          : null);
+
+      const waResult = await sendAutomatedCompanyWhatsApp({
+        clientPhone: input.clientPhone,
+        clientName: input.expectedClientName,
+        companyName: companyData?.name || 'ReviewFox',
+        employeeName: profile.full_name || 'فريق العمل',
+        locationZone: input.locationZone ?? null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
+        googleReviewUrl: reviewLink,
+        verificationCode: input.verificationCode,
+        companyPhoneId: (companyData as any)?.whatsapp_phone_number_id || null,
+        companyAccessToken: (companyData as any)?.whatsapp_access_token || null,
+      });
+
+      whatsappSent = waResult.sent;
+    }
+
     revalidatePath('/employee');
-    return { success: true, claim: claim as PreClaim };
+    return { success: true, claim: claim as PreClaim, whatsappSent };
   } catch (err) {
     return { success: false, error: errorMessage(err, 'Failed to submit pre-claim.') };
   }
